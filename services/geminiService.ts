@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { CircuitState } from "../types";
 
 const SYSTEM_INSTRUCTION = `
@@ -16,6 +16,29 @@ const SYSTEM_INSTRUCTION = `
 - 使用 Markdown 格式。
 - 如果发现电路连接严重错误（如电源短路），请优先警告用户。
 - 公式请清晰展示。
+`;
+
+const CIRCUIT_RECOGNITION_PROMPT = `
+Analyze the circuit diagram in this image. Identify the components and their connections.
+Return a JSON object describing the circuit.
+
+Rules:
+1. Identify components. Supported types: 'BATTERY', 'RESISTOR', 'RHEOSTAT', 'BULB', 'SWITCH', 'AMMETER', 'VOLTMETER'.
+2. Assign a 4x4 grid position (row: 0-3, col: 0-3) for each component to lay them out visually. 
+   - Place the Battery at (0,0) or (3,1) typically.
+   - Arrange components logically (e.g. a series loop).
+3. List connections as pairs of component IDs.
+
+Response Format:
+{
+  "components": [
+    { "id": "c1", "type": "BATTERY", "row": 3, "col": 1 },
+    { "id": "c2", "type": "SWITCH", "row": 3, "col": 2 }
+  ],
+  "connections": [
+    { "source": "c1", "target": "c2" }
+  ]
+}
 `;
 
 export const streamGeminiResponse = async (
@@ -58,4 +81,55 @@ export const streamGeminiResponse = async (
     console.error("Gemini API Error:", error);
     throw error;
   }
+};
+
+export const scanCircuitImage = async (base64Image: string) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+                    { text: CIRCUIT_RECOGNITION_PROMPT }
+                ]
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        components: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    id: { type: Type.STRING },
+                                    type: { type: Type.STRING },
+                                    row: { type: Type.INTEGER },
+                                    col: { type: Type.INTEGER },
+                                }
+                            }
+                        },
+                        connections: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    source: { type: Type.STRING },
+                                    target: { type: Type.STRING }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Vision API Error:", error);
+        throw new Error("无法识别图片中的电路，请确保图片清晰且包含完整的电路结构。");
+    }
 };

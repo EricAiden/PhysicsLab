@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { CircuitComponent, Wire } from '../types';
 import { Trash2, RotateCw, AlertTriangle } from 'lucide-react';
@@ -21,8 +22,6 @@ const CircuitCanvas: React.FC<Props> = ({
   const [drawingWireStart, setDrawingWireStart] = useState<{compId: string, pinIndex: number} | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  
-  // Rheostat dragging state
   const [rheostatDrag, setRheostatDrag] = useState<{id: string, startX: number, startVal: number} | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -66,11 +65,9 @@ const CircuitCanvas: React.FC<Props> = ({
     setMousePos(p);
 
     if (rheostatDrag) {
-        // Calculate new resistance based on drag distance
-        // Sensitivity: 1 pixel = 0.5 Ohm change
         const delta = p.x - rheostatDrag.startX;
         let newVal = rheostatDrag.startVal + delta * 0.5;
-        newVal = Math.max(0, Math.min(50, newVal)); // Clamp between 0 and 50 Ohm
+        newVal = Math.max(0, Math.min(50, newVal));
         onUpdateComponent(rheostatDrag.id, { value: Math.round(newVal) });
     } else if (draggingId) {
       onMoveComponent(draggingId, p.x, p.y);
@@ -95,21 +92,15 @@ const CircuitCanvas: React.FC<Props> = ({
   };
 
   const getPinCoords = (c: CircuitComponent, pinIndex: number) => {
-    // Default: Pin 0 is Left/Top, Pin 1 is Right/Bottom
     let dx = 0, dy = 0;
     const rad = c.rotation * Math.PI / 180;
-    // Local offsets for pins based on component design
     const lx = pinIndex === 0 ? -PIN_OFFSET : PIN_OFFSET;
     const ly = 0;
-    
-    // Rotate local
     const rx = lx * Math.cos(rad) - ly * Math.sin(rad);
     const ry = lx * Math.sin(rad) + ly * Math.cos(rad);
-
     return { x: c.x + rx, y: c.y + ry };
   };
 
-  // Render Component Symbol based on type
   const renderSymbol = (c: CircuitComponent) => {
     switch (c.type) {
         case 'BATTERY':
@@ -129,15 +120,12 @@ const CircuitCanvas: React.FC<Props> = ({
                 </g>
             );
         case 'RHEOSTAT':
-            // Map 0-50 Ohm to -15 to 15 x-position
             const sliderX = -15 + (c.value / 50) * 30;
             return (
                 <g>
                     <rect x="-20" y="-8" width="40" height="16" fill="#d1d5db" stroke="black" strokeWidth="2" />
                     <text x="0" y="4" textAnchor="middle" className="text-[8px] fill-gray-600 select-none">0...50Ω</text>
-                    {/* Slider Track */}
                     <line x1="-15" y1="-12" x2="15" y2="-12" stroke="gray" strokeWidth="1" />
-                    {/* Slider Handle - Interactive */}
                     <g 
                         className="cursor-col-resize hover:scale-110 transition-transform"
                         onMouseDown={(e) => handleSliderStart(e, c.id, c.value)}
@@ -151,7 +139,7 @@ const CircuitCanvas: React.FC<Props> = ({
                 </g>
             );
         case 'BULB':
-            const brightness = Math.min((Math.abs(c.current || 0) * 2), 1); // Scale brightness
+            const brightness = Math.min((Math.abs(c.current || 0) * 2), 1);
             return (
                 <g>
                     <circle cx="0" cy="0" r="15" fill={`rgba(255, 215, 0, ${0.1 + brightness})`} stroke={brightness > 0.5 ? "orange" : "black"} strokeWidth="2" />
@@ -199,8 +187,7 @@ const CircuitCanvas: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-full h-full relative flex flex-col">
-        {/* Glow Defs */}
+    <div className="w-full h-full relative flex flex-col bg-white">
         <svg style={{position: 'absolute', width: 0, height: 0}}>
             <defs>
                 <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -213,7 +200,6 @@ const CircuitCanvas: React.FC<Props> = ({
             </defs>
         </svg>
 
-      {/* Toolbar for selected item */}
       {selectedId && (
         <div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur p-2 rounded-lg shadow border border-gray-200 flex gap-2 items-center">
            <button onClick={() => {
@@ -223,7 +209,6 @@ const CircuitCanvas: React.FC<Props> = ({
               <RotateCw className="w-4 h-4 text-gray-600" />
            </button>
            
-           {/* Value Editor */}
            {(() => {
                const c = components.find(x => x.id === selectedId);
                if (!c) return null;
@@ -250,7 +235,6 @@ const CircuitCanvas: React.FC<Props> = ({
         </div>
       )}
       
-      {/* Error / Status Banner */}
       {error && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-red-50 border border-red-200 text-red-700 px-6 py-3 rounded-lg shadow-xl z-20 flex items-center gap-3 animate-bounce">
               <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -258,7 +242,6 @@ const CircuitCanvas: React.FC<Props> = ({
           </div>
       )}
       
-      {/* Circuit Connected Indicator */}
       {!error && components.some(c => Math.abs(c.current || 0) > 0.001) && (
            <div className="absolute bottom-6 right-6 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg shadow-md z-10 text-xs font-bold flex items-center gap-2">
                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -282,20 +265,17 @@ const CircuitCanvas: React.FC<Props> = ({
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        {/* Wires */}
         {wires.map(w => {
            const c1 = components.find(c => c.id === w.sourceComponentId);
            const c2 = components.find(c => c.id === w.targetComponentId);
            if (!c1 || !c2) return null;
            const p1 = getPinCoords(c1, w.sourcePinIndex);
            const p2 = getPinCoords(c2, w.targetPinIndex);
-           
            const current = c1.current || 0; 
            const isFlowing = Math.abs(current) > 0.001;
 
            return (
              <g key={w.id} className="pointer-events-none">
-                {/* Outer glow for active wires */}
                 {isFlowing && <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="rgba(239, 68, 68, 0.2)" strokeWidth="8" />}
                 <line 
                     x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} 
@@ -307,7 +287,6 @@ const CircuitCanvas: React.FC<Props> = ({
            );
         })}
 
-        {/* Interactive Wire Drawing Line */}
         {drawingWireStart && mousePos && (() => {
             const c = components.find(comp => comp.id === drawingWireStart.compId);
             if (!c) return null;
@@ -322,7 +301,6 @@ const CircuitCanvas: React.FC<Props> = ({
             );
         })()}
 
-        {/* Components */}
         {components.map(c => {
             const isSelected = selectedId === c.id;
             return (
@@ -333,14 +311,9 @@ const CircuitCanvas: React.FC<Props> = ({
                     onTouchStart={(e) => handleMouseDown(e, c.id)}
                     className={`cursor-move ${isSelected ? 'opacity-100' : 'opacity-90 hover:opacity-100'}`}
                 >
-                    {/* Selection Halo */}
                     {isSelected && <circle r="35" fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="4" />}
-                    
                     {renderSymbol(c)}
-
-                    {/* Connection Pins */}
                     <g className="cursor-pointer">
-                         {/* Pin 0 */}
                          <circle 
                             cx={-PIN_OFFSET} cy="0" r="6" 
                             fill={drawingWireStart?.compId === c.id && drawingWireStart?.pinIndex === 0 ? "#ef4444" : "transparent"}
@@ -348,7 +321,6 @@ const CircuitCanvas: React.FC<Props> = ({
                             className="hover:fill-red-100"
                             onClick={(e) => handlePinClick(e, c.id, 0)}
                          />
-                         {/* Pin 1 */}
                          <circle 
                             cx={PIN_OFFSET} cy="0" r="6" 
                             fill={drawingWireStart?.compId === c.id && drawingWireStart?.pinIndex === 1 ? "#ef4444" : "transparent"}
@@ -357,8 +329,6 @@ const CircuitCanvas: React.FC<Props> = ({
                             onClick={(e) => handlePinClick(e, c.id, 1)}
                          />
                     </g>
-                    
-                    {/* Labels */}
                     <text x="0" y="-35" textAnchor="middle" className="text-xs font-bold fill-gray-500 select-none pointer-events-none">{c.label}</text>
                 </g>
             );
