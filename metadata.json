@@ -1,0 +1,5 @@
+{
+  "name": "PhysicsLab: Ohm's Law & Power",
+  "description": "An interactive physics simulation for 9th-grade students to explore Ohm's Law and Electric Power using a sliding rheostat. Includes a Gemini-powered AI Physics Tutor.",
+  "requestFramePermissions": []
+}
